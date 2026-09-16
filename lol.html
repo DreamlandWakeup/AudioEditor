@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Audio Studio Pro — Web</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --panel: #2d2d2d;
+    --panel2: #252525;
+    --text: #e0e0e0;
+    --accent: #4a9eff;
+    --green: #28a745;
+    --yellow: #ffc107;
+    --red: #dc3545;
+    --cyan: #17a2b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .menubar {
+    background: #222;
+    padding: 6px 12px;
+    display: flex;
+    gap: 18px;
+    font-size: 13px;
+    border-bottom: 1px solid #333;
+    align-items: center;
+  }
+  .menubar details { position: relative; }
+  .menubar summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .menubar summary:hover { background: #333; }
+  .menubar summary::-webkit-details-marker { display: none; }
+  .menubar .menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 6px;
+    min-width: 220px;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .menubar .menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text);
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .menubar .menu button:hover { background: #3a3a3a; }
+  .menubar .menu hr { border: none; border-top: 1px solid #444; margin: 4px 0; }
+
+  .undo-redo {
+    display: flex;
+    gap: 4px;
+    margin-left: 12px;
+  }
+  .undo-redo button {
+    width: 34px;
+    height: 28px;
+    border: none;
+    border-radius: 5px;
+    background: #3a3a3a;
+    color: #e0e0e0;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .undo-redo button:hover:not(:disabled) { background: #4a9eff; }
+  .undo-redo button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .main { flex: 1; display: flex; overflow: hidden; }
+  .left {
+    width: 520px;
+    background: var(--panel);
+    overflow-y: auto;
+    border-right: 1px solid #333;
+    padding: 12px;
+  }
+  .right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .info-panel {
+    background: var(--panel2);
+    padding: 12px;
+    height: 150px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    border-bottom: 1px solid #333;
+  }
+  .timeline-wrap {
+    flex: 1;
+    position: relative;
+    background: #252525;
+    overflow: hidden;
+  }
+  #timeline { width: 100%; height: 100%; cursor: crosshair; }
+
+  .effect-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 4px 0;
+  }
+  .effect-row .auto-btn {
+    width: 28px; height: 24px;
+    border: none; border-radius: 4px;
+    background: #3d3d3d; color: #888;
+    cursor: pointer; font-size: 12px;
+  }
+  .effect-row .auto-btn.on { background: var(--accent); color: #fff; }
+  .effect-row .name {
+    width: 130px; font-size: 12px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .effect-row input[type="number"] {
+    width: 52px; background: #1a1a1a; border: 1px solid #444;
+    color: var(--text); padding: 3px 4px; border-radius: 3px; font-size: 11px;
+  }
+  .effect-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .effect-row .val { width: 70px; text-align: right; font-size: 12px; color: var(--accent); }
+
+  .btns-row { display: flex; gap: 10px; margin: 16px 0 8px; }
+  .btns-row button {
+    padding: 8px 16px; border: none; border-radius: 5px;
+    font-weight: 600; cursor: pointer; font-size: 13px;
+  }
+
+  .transport {
+    background: var(--panel);
+    padding: 10px 16px;
+    border-top: 1px solid #333;
+  }
+  .transport-btns {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .transport-btns button {
+    padding: 8px 14px; border: none; border-radius: 5px;
+    font-weight: 600; cursor: pointer; font-size: 13px; color: #fff;
+  }
+  .btn-play { background: var(--green); }
+  .btn-pause { background: var(--yellow); color: #000; }
+  .btn-stop { background: var(--red); }
+  .btn-load { background: var(--cyan); }
+  .btn-save { background: #6c757d; }
+  .btn-nav { background: #444; min-width: 40px; }
+
+  .progress-row { display: flex; align-items: center; gap: 10px; }
+  .progress-row .time {
+    font-size: 12px; color: var(--accent); font-weight: 600; min-width: 40px;
+  }
+  #progress {
+    flex: 1; height: 8px; -webkit-appearance: none; appearance: none;
+    background: #3d3d3d; border-radius: 4px;
+  }
+  #progress::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
+  .file-info { text-align: center; font-size: 11px; color: #aaa; margin-top: 6px; }
+  .status {
+    background: #222; padding: 4px 12px; font-size: 12px; border-top: 1px solid #333;
+  }
+
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #2d2d2d; border-radius: 10px; padding: 24px; width: 380px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  }
+  .modal h3 { margin-bottom: 14px; }
+  .modal label { display: block; margin: 8px 0 4px; font-size: 13px; }
+  .modal .radios { display: flex; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+  .modal .radios label { display: flex; align-items: center; gap: 4px; }
+  .modal .actions {
+    display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;
+  }
+  .modal .actions button {
+    padding: 8px 18px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;
+  }
+  .modal .actions .ok { background: var(--accent); color: #fff; }
+  .modal .actions .cancel { background: #555; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="menubar">
+  <details>
+    <summary>Файл</summary>
+    <div class="menu">
+      <button onclick="loadAudio()">Открыть аудио… (Ctrl+O)</button>
+      <hr>
+      <button onclick="saveAudio()">Сохранить как WAV… (Ctrl+S)</button>
+      <hr>
+      <button onclick="exportAnim()">Экспортировать анимацию</button>
+      <button onclick="importAnim()">Импортировать анимацию</button>
+    </div>
+  </details>
+  <details>
+    <summary>Таймлайн</summary>
+    <div class="menu">
+      <button onclick="clearKeyframes()">Очистить все keyframes</button>
+      <button onclick="toggleAllAuto()">Вкл/Выкл всю автоматизацию</button>
+      <hr>
+      <button onclick="zoomTimeline(1.2)">Зум +</button>
+      <button onclick="zoomTimeline(0.8)">Зум −</button>
+      <button onclick="zoomTimeline(1, true)">Сбросить зум</button>
+    </div>
+  </details>
+  <details>
+    <summary>Справка</summary>
+    <div class="menu">
+      <button onclick="showAbout()">О программе</button>
+    </div>
+  </details>
+
+  <!-- Undo / Redo -->
+  <div class="undo-redo">
+    <button id="undoBtn" onclick="undo()" title="Отменить (Ctrl+Z)" disabled>↶</button>
+    <button id="redoBtn" onclick="redo()" title="Вернуть (Ctrl+Y)" disabled>↷</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left" id="effectsPanel"></div>
+  <div class="right">
+    <div class="info-panel" id="infoText">
+      📁 Загрузите аудиофайл (WAV / MP3 / OGG)<br><br>
+      🖱️ ЛКМ на таймлайне — перемещение<br>
+      🖱️ ПКМ — добавить keyframe<br>
+      🖱️ Клик по keyframe — удалить его<br>
+      ⌨️ Ctrl+Z / Ctrl+Y — отмена / возврат
+    </div>
+    <div class="timeline-wrap">
+      <canvas id="timeline"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="transport">
+  <div class="transport-btns">
+    <button class="btn-play" id="playBtn" onclick="play()">▶ Воспроизвести</button>
+    <button class="btn-pause" id="pauseBtn" onclick="pause()" disabled>⏸ Пауза</button>
+    <button class="btn-stop" id="stopBtn" onclick="stop()" disabled>⏹ Стоп</button>
+    <button class="btn-load" onclick="loadAudio()">🎵 Загрузить</button>
+    <button class="btn-save" onclick="saveAudio()">💾 Сохранить</button>
+    <span style="flex:1"></span>
+    <button class="btn-nav" onclick="seekBy(-5)">◀◀</button>
+    <button class="btn-nav" onclick="seekBy(-1)">◀</button>
+    <button class="btn-nav" onclick="seekBy(1)">▶</button>
+    <button class="btn-nav" onclick="seekBy(5)">▶▶</button>
+  </div>
+  <div class="progress-row">
+    <span class="time" id="timeLabel">00:00</span>
+    <input type="range" id="progress" min="0" max="1000" value="0" oninput="onProgressDrag(this)">
+    <span class="time" id="durationLabel">00:00</span>
+  </div>
+  <div class="file-info" id="fileInfo">📄 Файл не загружен</div>
+</div>
+<div class="status" id="status">✅ Готово | ЛКМ — seek | ПКМ — keyframe | Клик по точке — удалить</div>
+
+<div class="modal-bg" id="kfModal">
+  <div class="modal">
+    <h3>Добавить Keyframe</h3>
+    <div id="kfInfo"></div>
+    <label>Тип интерполяции:</label>
+    <div class="radios">
+      <label><input type="radio" name="interp" value="linear" checked> linear</label>
+      <label><input type="radio" name="interp" value="ease_in"> ease_in</label>
+      <label><input type="radio" name="interp" value="ease_out"> ease_out</label>
+      <label><input type="radio" name="interp" value="step"> step</label>
+    </div>
+    <div class="actions">
+      <button class="cancel" onclick="closeKfModal()">Отмена</button>
+      <button class="ok" onclick="confirmKeyframe()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.ogg" style="display:none" onchange="onFileSelected(event)">
+<input type="file" id="jsonInput" accept=".json" style="display:none" onchange="onJsonSelected(event)">
+
+<script>
+// ===================== DATA =====================
+const PARAMS = [
+  { key: 'low_cut',     name: 'Low Cut (Hz)',   min: 30,    max: 500,   def: 80,    unit: 'Hz' },
+  { key: 'high_cut',    name: 'High Cut (Hz)',  min: 1000,  max: 8000,  def: 3500,  unit: 'Hz' },
+  { key: 'vinyl_noise', name: 'Vinyl Noise',    min: 0,     max: 0.04,  def: 0,     unit: '' },
+  { key: 'crackle',     name: 'Crackle',        min: 0,     max: 25,    def: 0,     unit: '' },
+  { key: 'wow_depth',   name: 'Wow Depth',      min: 0,     max: 0.008, def: 0,     unit: '' },
+  { key: 'saturation',  name: 'Saturation',     min: 1,     max: 2.5,   def: 1,     unit: '' },
+  { key: 'bitcrush',    name: 'Bitcrush',       min: 10,    max: 16,    def: 16,    unit: 'bit' },
+  { key: 'compression', name: 'Compression',    min: 0,     max: 0.4,   def: 0,     unit: '' },
+  { key: 'echo_delay',  name: 'Echo Delay',     min: 0,     max: 0.25,  def: 0,     unit: 'sec' },
+  { key: 'reverb',      name: 'Reverb',         min: 0,     max: 0.25,  def: 0,     unit: '' },
+  { key: 'tube_warmth', name: 'Tube Warmth',    min: 0,     max: 0.4,   def: 0,     unit: '' },
+];
+
+const tracks = {};
+const values = {};
+let audioCtx = null;
+let audioBuffer = null;
+let sourceNode = null;
+let isPlaying = false;
+let startTime = 0;
+let pauseOffset = 0;
+let duration = 0;
+let zoom = 1;
+let offset = 0;
+let pendingKf = null;
+
+// Undo / Redo
+let history = [];
+let historyIndex = -1;
+const MAX_HISTORY = 50;
+
+// Nodes
+let filterLow, filterHigh, waveShaper, gainNode;
+let delayNode, delayGain, convolver, dryGain, wetGain;
+let wowDelay, wowLFO, wowLFOGain;
+let noiseSource, noiseGain, crackleGain;
+let crackleInterval = null;
+
+// ===================== HISTORY (Undo/Redo) =====================
+function snapshotKeyframes() {
+  const snap = {};
+  Object.keys(tracks).forEach(k => {
+    snap[k] = tracks[k].keyframes.map(kf => ({ ...kf }));
+  });
+  return snap;
+}
+
+function restoreKeyframes(snap) {
+  Object.keys(snap).forEach(k => {
+    if (tracks[k]) {
+      tracks[k].keyframes = snap[k].map(kf => ({ ...kf }));
+    }
+  });
+  drawTimeline();
+  updateUndoRedoButtons();
+}
+
+function pushHistory() {
+  // удаляем "будущее" если мы были в середине истории
+  if (historyIndex < history.length - 1) {
+    history = history.slice(0, historyIndex + 1);
+  }
+  history.push(snapshotKeyframes());
+  if (history.length > MAX_HISTORY) {
+    history.shift();
+  } else {
+    historyIndex++;
+  }
+  // если сдвинули из-за лимита
+  if (historyIndex >= history.length) historyIndex = history.length - 1;
+  updateUndoRedoButtons();
+}
+
+function undo() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  restoreKeyframes(history[historyIndex]);
+  setStatus('↶ Отменено');
+}
+
+function redo() {
+  if (historyIndex >= history.length - 1) return;
+  historyIndex++;
+  restoreKeyframes(history[historyIndex]);
+  setStatus('↷ Возвращено');
+}
+
+function updateUndoRedoButtons() {
+  document.getElementById('undoBtn').disabled = historyIndex <= 0;
+  document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+}
+
+// ===================== INIT UI =====================
+function initEffects() {
+  const panel = document.getElementById('effectsPanel');
+  PARAMS.forEach(p => {
+    tracks[p.key] = {
+      name: p.name, key: p.key,
+      min: p.min, max: p.max,
+      enabled: true,
+      keyframes: []
+    };
+    values[p.key] = p.def;
+
+    const row = document.createElement('div');
+    row.className = 'effect-row';
+    row.innerHTML = `
+      <button class="auto-btn on" data-key="${p.key}" title="Автоматизация">🔘</button>
+      <span class="name">${p.name}</span>
+      <input type="number" class="min" data-key="${p.key}" value="${p.min}" step="any">
+      <span>-</span>
+      <input type="number" class="max" data-key="${p.key}" value="${p.max}" step="any">
+      <input type="range" data-key="${p.key}" min="0" max="1000"
+             value="${((p.def - p.min) / (p.max - p.min)) * 1000}">
+      <span class="val" id="val_${p.key}">${fmt(p.def, p.unit)}</span>
+    `;
+    panel.appendChild(row);
+  });
+
+  const btns = document.createElement('div');
+  btns.className = 'btns-row';
+  btns.innerHTML = `
+    <button style="background:#555;color:#fff" onclick="resetEffects()">🔄 Сбросить</button>
+    <button style="background:#555;color:#fff" onclick="randomEffects()">🎲 Рандом</button>
+  `;
+  panel.appendChild(btns);
+
+  panel.querySelectorAll('input[type=range]').forEach(sl => {
+    sl.addEventListener('input', e => {
+      const key = e.target.dataset.key;
+      const t = tracks[key];
+      const v = t.min + (e.target.value / 1000) * (t.max - t.min);
+      values[key] = v;
+      document.getElementById('val_' + key).textContent = fmt(v, PARAMS.find(x => x.key === key).unit);
+      if (isPlaying) updateLiveParams();
+    });
+  });
+
+  panel.querySelectorAll('input.min, input.max').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const key = e.target.dataset.key;
+      const t = tracks[key];
+      const isMin = e.target.classList.contains('min');
+      let v = parseFloat(e.target.value);
+      if (isNaN(v)) return;
+      if (isMin) t.min = v; else t.max = v;
+      if (t.min >= t.max) {
+        if (isMin) t.min = t.max - 0.001;
+        else t.max = t.min + 0.001;
+      }
+      const sl = panel.querySelector(`input[type=range][data-key="${key}"]`);
+      const cur = values[key];
+      sl.value = ((cur - t.min) / (t.max - t.min)) * 1000;
+      drawTimeline();
+    });
+  });
+
+  panel.querySelectorAll('.auto-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      tracks[key].enabled = !tracks[key].enabled;
+      btn.classList.toggle('on', tracks[key].enabled);
+      btn.textContent = tracks[key].enabled ? '🔘' : '⭕';
+      setStatus(`Автоматизация ${tracks[key].name}: ${tracks[key].enabled ? 'вкл' : 'выкл'}`);
+      drawTimeline();
+    });
+  });
+
+  // начальный снимок истории
+  pushHistory();
+}
+
+function fmt(v, unit) {
+  if (unit === 'Hz' || unit === 'bit') return v.toFixed(0) + unit;
+  if (unit === 'sec') return v.toFixed(3) + unit;
+  return v.toFixed(3);
+}
+
+// ===================== AUDIO =====================
+async function ensureCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+}
+
+function loadAudio() {
+  document.getElementById('fileInput').click();
+}
+
+async function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  await ensureCtx();
+  setStatus('⏳ Загрузка…');
+  try {
+    const arr = await file.arrayBuffer();
+    audioBuffer = await audioCtx.decodeAudioData(arr);
+    duration = audioBuffer.duration;
+    pauseOffset = 0;
+    document.getElementById('fileInfo').textContent =
+      `📁 ${file.name} | ⏱️ ${duration.toFixed(1)} сек | 🎵 ${audioBuffer.sampleRate} Гц`;
+    document.getElementById('durationLabel').textContent = formatTime(duration);
+    document.getElementById('progress').max = duration * 1000;
+    document.getElementById('progress').value = 0;
+    document.getElementById('timeLabel').textContent = '00:00';
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = false;
+
+    document.getElementById('infoText').innerHTML = `
+      📊 <b>${file.name}</b><br>
+      ⏱️ ${duration.toFixed(2)} сек · 🎵 ${audioBuffer.sampleRate} Гц · ${audioBuffer.numberOfChannels} ch<br><br>
+      🖱️ ЛКМ — seek · ПКМ — добавить keyframe<br>
+      🖱️ Клик по точке keyframe — удалить<br>
+      ⌨️ Ctrl+Z / Ctrl+Y — отмена / возврат
+    `;
+    setStatus('✅ Загружено');
+    drawTimeline();
+  } catch (err) {
+    alert('Ошибка загрузки: ' + err.message);
+    setStatus('❌ Ошибка');
+  }
+  e.target.value = '';
+}
+
+function getParam(key, time) {
+  const t = tracks[key];
+  if (t && t.enabled && t.keyframes.length) {
+    const v = getValueAtTime(t, time);
+    if (v !== null) return v;
+  }
+  return values[key];
+}
+
+function getValueAtTime(track, time) {
+  const kfs = track.keyframes;
+  if (!kfs.length) return null;
+  let prev = null, next = null;
+  for (const kf of kfs) {
+    if (kf.t <= time) prev = kf;
+    else { next = kf; break; }
+  }
+  if (!prev) return kfs[0].v;
+  if (!next) return kfs[kfs.length - 1].v;
+  const dt = next.t - prev.t;
+  if (dt < 1e-6) return prev.v;
+  let t = (time - prev.t) / dt;
+  t = Math.max(0, Math.min(1, t));
+  if (prev.interp === 'ease_in') t = t * t;
+  else if (prev.interp === 'ease_out') t = 1 - (1 - t) * (1 - t);
+  else if (prev.interp === 'step') return prev.v;
+  return prev.v + (next.v - prev.v) * t;
+}
+
+function createNoiseBuffer(ctx, seconds = 2) {
+  const rate = ctx.sampleRate;
+  const length = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, length, rate);
+  const data = buffer.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+  for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+    b6 = white * 0.115926;
+  }
+  return buffer;
+}
+
+function createCrackleBuffer(ctx) {
+  const rate = ctx.sampleRate;
+  const length = Math.floor(rate * 0.03);
+  const buffer = ctx.createBuffer(1, length, rate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    const t = i / length;
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 18) * 0.7;
+  }
+  return buffer;
+}
+
+function buildGraph() {
+  filterLow = audioCtx.createBiquadFilter();
+  filterLow.type = 'highpass';
+  filterLow.Q.value = 0.7;
+
+  filterHigh = audioCtx.createBiquadFilter();
+  filterHigh.type = 'lowpass';
+  filterHigh.Q.value = 0.7;
+
+  waveShaper = audioCtx.createWaveShaper();
+  waveShaper.curve = makeDistortionCurve(0);
+  waveShaper.oversample = '4x';
+
+  wowDelay = audioCtx.createDelay(0.1);
+  wowDelay.delayTime.value = 0.025;
+
+  wowLFO = audioCtx.createOscillator();
+  wowLFO.type = 'sine';
+  wowLFO.frequency.value = 0.55;
+
+  wowLFOGain = audioCtx.createGain();
+  wowLFOGain.gain.value = 0;
+
+  wowLFO.connect(wowLFOGain);
+  wowLFOGain.connect(wowDelay.delayTime);
+  wowLFO.start();
+
+  delayNode = audioCtx.createDelay(1.0);
+  delayGain = audioCtx.createGain();
+  delayGain.gain.value = 0.25;
+
+  convolver = audioCtx.createConvolver();
+  convolver.buffer = makeReverbIR(audioCtx, 1.8);
+
+  dryGain = audioCtx.createGain();
+  wetGain = audioCtx.createGain();
+  wetGain.gain.value = 0;
+
+  gainNode = audioCtx.createGain();
+  gainNode.gain.value = 0.90;
+
+  const noiseBuf = createNoiseBuffer(audioCtx, 2.5);
+  noiseSource = audioCtx.createBufferSource();
+  noiseSource.buffer = noiseBuf;
+  noiseSource.loop = true;
+
+  noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0;
+
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 1200;
+  noiseFilter.Q.value = 0.6;
+
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+
+  crackleGain = audioCtx.createGain();
+  crackleGain.gain.value = 0;
+}
+
+function makeDistortionCurve(amount) {
+  const n = 44100;
+  const curve = new Float32Array(n);
+  const k = amount * 55;
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+  }
+  return curve;
+}
+
+function makeReverbIR(ctx, seconds) {
+  const rate = ctx.sampleRate;
+  const length = Math.floor(rate * seconds);
+  const ir = ctx.createBuffer(2, length, rate);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < length; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.2);
+    }
+  }
+  return ir;
+}
+
+function updateLiveParams() {
+  if (!isPlaying || !filterLow) return;
+  const t = getCurrentTime();
+  const now = audioCtx.currentTime;
+
+  filterLow.frequency.setTargetAtTime(getParam('low_cut', t), now, 0.015);
+  filterHigh.frequency.setTargetAtTime(getParam('high_cut', t), now, 0.015);
+
+  const sat = getParam('saturation', t);
+  waveShaper.curve = makeDistortionCurve(Math.max(0, sat - 1));
+
+  const wowDepth = getParam('wow_depth', t);
+  wowLFOGain.gain.setTargetAtTime(wowDepth * 2.2, now, 0.04);
+
+  const echo = getParam('echo_delay', t);
+  delayNode.delayTime.setTargetAtTime(echo, now, 0.02);
+  delayGain.gain.setTargetAtTime(echo > 0.004 ? 0.28 : 0, now, 0.03);
+
+  const rev = getParam('reverb', t);
+  wetGain.gain.setTargetAtTime(rev * 1.15, now, 0.04);
+  dryGain.gain.setTargetAtTime(1 - rev * 0.42, now, 0.04);
+
+  const vn = getParam('vinyl_noise', t);
+  noiseGain.gain.setTargetAtTime(vn * 3.8, now, 0.05);
+
+  const cr = getParam('crackle', t);
+  crackleGain.gain.setTargetAtTime(cr > 0.5 ? 0.55 : 0, now, 0.03);
+}
+
+function startCrackle() {
+  stopCrackle();
+  const crackleBuf = createCrackleBuffer(audioCtx);
+
+  function fireClick() {
+    if (!isPlaying) return;
+    const intensity = getParam('crackle', getCurrentTime());
+    if (intensity < 0.8) {
+      crackleInterval = setTimeout(fireClick, 200 + Math.random() * 1200);
+      return;
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = crackleBuf;
+    const g = audioCtx.createGain();
+    g.gain.value = (0.15 + Math.random() * 0.45) * (intensity / 25);
+    src.connect(g);
+    g.connect(crackleGain);
+    src.start();
+    const interval = Math.max(80, 900 - intensity * 28 + Math.random() * 400);
+    crackleInterval = setTimeout(fireClick, interval);
+  }
+  crackleInterval = setTimeout(fireClick, 300 + Math.random() * 500);
+}
+
+function stopCrackle() {
+  if (crackleInterval) {
+    clearTimeout(crackleInterval);
+    crackleInterval = null;
+  }
+}
+
+function play() {
+  if (!audioBuffer) { alert('Сначала загрузите аудио'); return; }
+  ensureCtx().then(() => {
+    stopSource();
+    buildGraph();
+
+    sourceNode = audioCtx.createBufferSource();
+    sourceNode.buffer = audioBuffer;
+
+    sourceNode.connect(filterLow);
+    filterLow.connect(filterHigh);
+    filterHigh.connect(waveShaper);
+
+    waveShaper.connect(wowDelay);
+    wowDelay.connect(dryGain);
+
+    wowDelay.connect(delayNode);
+    delayNode.connect(delayGain);
+    delayGain.connect(dryGain);
+
+    wowDelay.connect(convolver);
+    convolver.connect(wetGain);
+
+    dryGain.connect(gainNode);
+    wetGain.connect(gainNode);
+
+    noiseGain.connect(gainNode);
+    crackleGain.connect(gainNode);
+
+    gainNode.connect(audioCtx.destination);
+
+    noiseSource.start(0);
+    updateLiveParams();
+    startCrackle();
+
+    const off = pauseOffset;
+    sourceNode.start(0, off);
+    startTime = audioCtx.currentTime - off;
+    isPlaying = true;
+
+    document.getElementById('playBtn').disabled = true;
+    document.getElementById('playBtn').textContent = '▶ Играет…';
+    document.getElementById('pauseBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = false;
+    setStatus('🎵 Воспроизведение');
+
+    sourceNode.onended = () => { if (isPlaying) stop(); };
+    requestAnimationFrame(tick);
+  });
+}
+
+function pause() {
+  if (!isPlaying) return;
+  pauseOffset = getCurrentTime();
+  stopSource();
+  isPlaying = false;
+  document.getElementById('playBtn').disabled = false;
+  document.getElementById('playBtn').textContent = '▶ Воспроизвести';
+  document.getElementById('pauseBtn').disabled = true;
+  setStatus('⏸ Пауза');
+}
+
+function stop() {
+  stopSource();
+  isPlaying = false;
+  pauseOffset = 0;
+  document.getElementById('playBtn').disabled = false;
+  document.getElementById('playBtn').textContent = '▶ Воспроизвести';
+  document.getElementById('pauseBtn').disabled = true;
+  document.getElementById('progress').value = 0;
+  document.getElementById('timeLabel').textContent = '00:00';
+  setStatus('⏹ Стоп');
+  drawTimeline();
+}
+
+function stopSource() {
+  if (sourceNode) {
+    try { sourceNode.stop(); } catch (_) {}
+    sourceNode.disconnect();
+    sourceNode = null;
+  }
+  if (noiseSource) {
+    try { noiseSource.stop(); } catch (_) {}
+    noiseSource = null;
+  }
+  if (wowLFO) {
+    try { wowLFO.stop(); } catch (_) {}
+    wowLFO = null;
+  }
+  stopCrackle();
+}
+
+function getCurrentTime() {
+  if (!isPlaying) return pauseOffset;
+  return Math.min(audioCtx.currentTime - startTime, duration);
+}
+
+function seekBy(sec) {
+  const t = Math.max(0, Math.min(duration, getCurrentTime() + sec));
+  seekTo(t);
+}
+
+function seekTo(t) {
+  pauseOffset = t;
+  if (isPlaying) {
+    stopSource();
+    isPlaying = false;
+    play();
+  } else {
+    document.getElementById('progress').value = t * 1000;
+    document.getElementById('timeLabel').textContent = formatTime(t);
+    drawTimeline();
+  }
+}
+
+function onProgressDrag(el) {
+  const t = el.value / 1000;
+  pauseOffset = t;
+  document.getElementById('timeLabel').textContent = formatTime(t);
+  if (isPlaying) {
+    stopSource();
+    isPlaying = false;
+    play();
+  } else drawTimeline();
+}
+
+function tick() {
+  if (!isPlaying) return;
+  const t = getCurrentTime();
+  document.getElementById('progress').value = t * 1000;
+  document.getElementById('timeLabel').textContent = formatTime(t);
+  updateLiveParams();
+  drawTimeline();
+  if (t < duration - 0.05) requestAnimationFrame(tick);
+  else stop();
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+// ===================== SAVE =====================
+async function saveAudio() {
+  if (!audioBuffer) { alert('Нет данных'); return; }
+  setStatus('⏳ Рендер…');
+  await ensureCtx();
+
+  const offline = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * audioBuffer.sampleRate), audioBuffer.sampleRate);
+
+  const src = offline.createBufferSource();
+  src.buffer = audioBuffer;
+
+  const fL = offline.createBiquadFilter(); fL.type = 'highpass'; fL.Q.value = 0.7;
+  const fH = offline.createBiquadFilter(); fH.type = 'lowpass'; fH.Q.value = 0.7;
+  const ws = offline.createWaveShaper(); ws.oversample = '4x';
+
+  const wDelay = offline.createDelay(0.1); wDelay.delayTime.value = 0.025;
+  const wLFO = offline.createOscillator(); wLFO.type = 'sine'; wLFO.frequency.value = 0.55;
+  const wLFOGain = offline.createGain();
+  wLFO.connect(wLFOGain); wLFOGain.connect(wDelay.delayTime);
+
+  const del = offline.createDelay(1.0);
+  const dg = offline.createGain();
+  const conv = offline.createConvolver(); conv.buffer = makeReverbIR(offline, 1.8);
+  const dry = offline.createGain();
+  const wet = offline.createGain();
+  const out = offline.createGain(); out.gain.value = 0.90;
+
+  const nBuf = createNoiseBuffer(offline, audioBuffer.duration + 0.5);
+  const nSrc = offline.createBufferSource(); nSrc.buffer = nBuf;
+  const nGain = offline.createGain();
+  const nFilter = offline.createBiquadFilter();
+  nFilter.type = 'bandpass'; nFilter.frequency.value = 1200; nFilter.Q.value = 0.6;
+  nSrc.connect(nFilter); nFilter.connect(nGain);
+
+  const crackleEvents = [];
+  let t = 0.3;
+  while (t < duration) {
+    const intensity = getParam('crackle', t);
+    if (intensity > 1) {
+      crackleEvents.push({ time: t, amp: (0.12 + Math.random() * 0.4) * (intensity / 25) });
+    }
+    t += Math.max(0.08, 0.9 - intensity * 0.028 + Math.random() * 0.4);
+  }
+
+  src.connect(fL); fL.connect(fH); fH.connect(ws);
+  ws.connect(wDelay); wDelay.connect(dry);
+  wDelay.connect(del); del.connect(dg); dg.connect(dry);
+  wDelay.connect(conv); conv.connect(wet);
+  dry.connect(out); wet.connect(out); nGain.connect(out);
+  out.connect(offline.destination);
+
+  const step = 0.05;
+  for (let tm = 0; tm <= duration + 0.1; tm += step) {
+    fL.frequency.setValueAtTime(getParam('low_cut', tm), tm);
+    fH.frequency.setValueAtTime(getParam('high_cut', tm), tm);
+    wLFOGain.gain.setValueAtTime(getParam('wow_depth', tm) * 2.2, tm);
+    const echo = getParam('echo_delay', tm);
+    del.delayTime.setValueAtTime(echo, tm);
+    dg.gain.setValueAtTime(echo > 0.004 ? 0.28 : 0, tm);
+    const rev = getParam('reverb', tm);
+    wet.gain.setValueAtTime(rev * 1.15, tm);
+    dry.gain.setValueAtTime(1 - rev * 0.42, tm);
+    nGain.gain.setValueAtTime(getParam('vinyl_noise', tm) * 3.8, tm);
+  }
+
+  ws.curve = makeDistortionCurve(Math.max(0, values.saturation - 1));
+
+  const crackleBuf = createCrackleBuffer(offline);
+  crackleEvents.forEach(ev => {
+    const cSrc = offline.createBufferSource();
+    cSrc.buffer = crackleBuf;
+    const g = offline.createGain();
+    g.gain.value = ev.amp;
+    cSrc.connect(g); g.connect(out);
+    cSrc.start(ev.time);
+  });
+
+  wLFO.start(0); nSrc.start(0); src.start(0);
+
+  const rendered = await offline.startRendering();
+  const wav = bufferToWav(rendered);
+  const blob = new Blob([wav], { type: 'audio/wav' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'retro_processed.wav';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus('✅ Сохранено');
+}
+
+function bufferToWav(buffer) {
+  const numCh = 1;
+  const sr = buffer.sampleRate;
+  const data = buffer.getChannelData(0);
+  const len = data.length;
+  const ab = new ArrayBuffer(44 + len * 2);
+  const view = new DataView(ab);
+  const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + len * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numCh, true);
+  view.setUint32(24, sr, true);
+  view.setUint32(28, sr * numCh * 2, true);
+  view.setUint16(32, numCh * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, len * 2, true);
+  let off = 44;
+  for (let i = 0; i < len; i++) {
+    const s = Math.max(-1, Math.min(1, data[i]));
+    view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    off += 2;
+  }
+  return ab;
+}
+
+// ===================== TIMELINE =====================
+const canvas = document.getElementById('timeline');
+const ctx2d = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  drawTimeline();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function timeToX(t) {
+  const vis = duration / zoom || 1;
+  return ((t - offset) / vis) * canvas.width;
+}
+function xToTime(x) {
+  const vis = duration / zoom || 1;
+  return (x / canvas.width) * vis + offset;
+}
+
+// Найти keyframe рядом с кликом
+function findKeyframeAt(x, y) {
+  if (!duration) return null;
+  const headerH = 28;
+  const trackH = Math.max(34, (canvas.height - headerH) / PARAMS.length);
+  const idx = Math.floor((y - headerH) / trackH);
+  if (idx < 0 || idx >= PARAMS.length) return null;
+
+  const track = tracks[PARAMS[idx].key];
+  const hitRadius = 10; // пикселей
+
+  for (let i = 0; i < track.keyframes.length; i++) {
+    const kf = track.keyframes[i];
+    const kx = timeToX(kf.t);
+    const ny = (kf.v - track.min) / (track.max - track.min || 1);
+    const ky = headerH + idx * trackH + trackH - 6 - ny * (trackH - 12);
+
+    if (Math.abs(x - kx) <= hitRadius && Math.abs(y - ky) <= hitRadius) {
+      return { trackKey: PARAMS[idx].key, index: i, kf };
+    }
+  }
+  return null;
+}
+
+function drawTimeline() {
+  const w = canvas.width, h = canvas.height;
+  ctx2d.fillStyle = '#252525';
+  ctx2d.fillRect(0, 0, w, h);
+
+  if (!duration) {
+    ctx2d.fillStyle = '#e0e0e0';
+    ctx2d.font = '14px sans-serif';
+    ctx2d.textAlign = 'center';
+    ctx2d.fillText('📁 Загрузите аудиофайл', w / 2, h / 2 - 20);
+    ctx2d.font = '12px sans-serif';
+    ctx2d.fillText('ЛКМ — seek · ПКМ — keyframe · Клик по точке — удалить', w / 2, h / 2 + 10);
+    return;
+  }
+
+  const headerH = 28;
+  const trackH = Math.max(34, (h - headerH) / PARAMS.length);
+  const colors = ['#4a9eff','#ff6b6b','#51cf66','#ffd43b','#ff8787','#74c0ff',
+                  '#ff922b','#20c997','#845ef7','#fcc419','#339af0'];
+
+  ctx2d.fillStyle = '#2d2d2d';
+  ctx2d.fillRect(0, 0, w, headerH);
+  ctx2d.fillStyle = '#e0e0e0';
+  ctx2d.font = '11px sans-serif';
+  const step = Math.max(1, Math.floor(duration / 8));
+  for (let t = 0; t <= duration; t += step) {
+    const x = timeToX(t);
+    if (x >= 0 && x <= w) {
+      ctx2d.beginPath();
+      ctx2d.moveTo(x, headerH - 10);
+      ctx2d.lineTo(x, headerH);
+      ctx2d.strokeStyle = '#888';
+      ctx2d.stroke();
+      ctx2d.fillText(t + 's', x - 10, headerH - 14);
+    }
+  }
+
+  PARAMS.forEach((p, i) => {
+    const track = tracks[p.key];
+    const y = headerH + i * trackH;
+    const col = colors[i % colors.length];
+
+    ctx2d.fillStyle = '#252525';
+    ctx2d.fillRect(0, y, w, trackH);
+    ctx2d.strokeStyle = '#333';
+    ctx2d.beginPath();
+    ctx2d.moveTo(0, y);
+    ctx2d.lineTo(w, y);
+    ctx2d.stroke();
+
+    ctx2d.fillStyle = '#e0e0e0';
+    ctx2d.font = 'bold 11px sans-serif';
+    ctx2d.textAlign = 'left';
+    ctx2d.fillText(p.name, 8, y + trackH / 2 + 4);
+
+    ctx2d.fillStyle = track.enabled ? '#4a9eff' : '#666';
+    ctx2d.font = '10px sans-serif';
+    ctx2d.textAlign = 'right';
+    ctx2d.fillText(track.enabled ? 'ON' : 'OFF', w - 8, y + trackH / 2 + 4);
+
+    if (track.keyframes.length && track.enabled) {
+      ctx2d.strokeStyle = col;
+      ctx2d.lineWidth = 2;
+      ctx2d.beginPath();
+      let started = false;
+      for (let px = 0; px < w; px += 3) {
+        const tm = xToTime(px);
+        if (tm < 0 || tm > duration) continue;
+        const v = getValueAtTime(track, tm);
+        if (v === null) continue;
+        const ny = (v - track.min) / (track.max - track.min || 1);
+        const py = y + trackH - 6 - ny * (trackH - 12);
+        if (!started) { ctx2d.moveTo(px, py); started = true; }
+        else ctx2d.lineTo(px, py);
+      }
+      ctx2d.stroke();
+
+      track.keyframes.forEach(kf => {
+        const kx = timeToX(kf.t);
+        if (kx < 0 || kx > w) return;
+        const ny = (kf.v - track.min) / (track.max - track.min || 1);
+        const ky = y + trackH - 6 - ny * (trackH - 12);
+        ctx2d.beginPath();
+        ctx2d.arc(kx, ky, 5, 0, Math.PI * 2);
+        ctx2d.fillStyle = col;
+        ctx2d.fill();
+        ctx2d.strokeStyle = '#fff';
+        ctx2d.lineWidth = 1.5;
+        ctx2d.stroke();
+        const ch = { linear:'L', ease_in:'I', ease_out:'O', step:'S' }[kf.interp] || 'L';
+        ctx2d.fillStyle = '#e0e0e0';
+        ctx2d.font = 'bold 9px sans-serif';
+        ctx2d.textAlign = 'center';
+        ctx2d.fillText(ch, kx, ky - 8);
+      });
+    }
+  });
+
+  const cur = getCurrentTime();
+  if (cur >= 0) {
+    const cx = timeToX(cur);
+    if (cx >= 0 && cx <= w) {
+      ctx2d.strokeStyle = '#ff4444';
+      ctx2d.lineWidth = 2;
+      ctx2d.setLineDash([4, 4]);
+      ctx2d.beginPath();
+      ctx2d.moveTo(cx, headerH);
+      ctx2d.lineTo(cx, h);
+      ctx2d.stroke();
+      ctx2d.setLineDash([]);
+    }
+  }
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (!duration) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const t = xToTime(x);
+
+  // Проверяем, кликнули ли по существующему keyframe
+  const hit = findKeyframeAt(x, y);
+
+  if (hit) {
+    // Удаляем keyframe
+    e.preventDefault();
+    tracks[hit.trackKey].keyframes.splice(hit.index, 1);
+    pushHistory();
+    setStatus(`🗑️ Keyframe удалён (${hit.trackKey})`);
+    drawTimeline();
+    return;
+  }
+
+  if (e.button === 0) {
+    // ЛКМ — seek
+    if (t >= 0 && t <= duration) seekTo(t);
+  } else if (e.button === 2) {
+    // ПКМ — добавить keyframe
+    e.preventDefault();
+    const headerH = 28;
+    const trackH = Math.max(34, (canvas.height - headerH) / PARAMS.length);
+    const idx = Math.floor((y - headerH) / trackH);
+    if (idx >= 0 && idx < PARAMS.length && t >= 0 && t <= duration) {
+      pendingKf = { key: PARAMS[idx].key, time: t };
+      document.getElementById('kfInfo').innerHTML =
+        `⏱️ Время: <b>${t.toFixed(2)} сек</b><br>` +
+        `📊 Значение: <b>${values[PARAMS[idx].key].toFixed(3)}</b><br>` +
+        `🎚️ ${PARAMS[idx].name}`;
+      document.getElementById('kfModal').classList.add('show');
+    }
+  }
+});
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.shiftKey) {
+    zoom *= e.deltaY < 0 ? 1.15 : 0.87;
+    zoom = Math.max(0.2, Math.min(15, zoom));
+  }
+  drawTimeline();
+}, { passive: false });
+
+function confirmKeyframe() {
+  if (!pendingKf) return;
+  const interp = document.querySelector('input[name=interp]:checked').value;
+  const track = tracks[pendingKf.key];
+  track.keyframes = track.keyframes.filter(k => Math.abs(k.t - pendingKf.time) > 0.02);
+  track.keyframes.push({ t: pendingKf.time, v: values[pendingKf.key], interp });
+  track.keyframes.sort((a, b) => a.t - b.t);
+  pushHistory();
+  closeKfModal();
+  setStatus(`✅ Keyframe @ ${pendingKf.time.toFixed(2)}s`);
+  drawTimeline();
+  pendingKf = null;
+}
+function closeKfModal() {
+  document.getElementById('kfModal').classList.remove('show');
+}
+
+// ===================== MISC =====================
+function resetEffects() {
+  PARAMS.forEach(p => {
+    values[p.key] = p.def;
+    const sl = document.querySelector(`input[type=range][data-key="${p.key}"]`);
+    const t = tracks[p.key];
+    sl.value = ((p.def - t.min) / (t.max - t.min)) * 1000;
+    document.getElementById('val_' + p.key).textContent = fmt(p.def, p.unit);
+  });
+  setStatus('🔄 Сброшено');
+  if (isPlaying) updateLiveParams();
+}
+
+function randomEffects() {
+  PARAMS.forEach(p => {
+    const t = tracks[p.key];
+    const v = t.min + Math.random() * (t.max - t.min);
+    values[p.key] = v;
+    const sl = document.querySelector(`input[type=range][data-key="${p.key}"]`);
+    sl.value = ((v - t.min) / (t.max - t.min)) * 1000;
+    document.getElementById('val_' + p.key).textContent = fmt(v, p.unit);
+  });
+  setStatus('🎲 Рандом');
+  if (isPlaying) updateLiveParams();
+}
+
+function clearKeyframes() {
+  Object.values(tracks).forEach(t => t.keyframes = []);
+  pushHistory();
+  drawTimeline();
+  setStatus('✅ Keyframes очищены');
+}
+
+function toggleAllAuto() {
+  const anyOff = Object.values(tracks).some(t => !t.enabled);
+  Object.values(tracks).forEach(t => t.enabled = anyOff);
+  document.querySelectorAll('.auto-btn').forEach(btn => {
+    const key = btn.dataset.key;
+    btn.classList.toggle('on', tracks[key].enabled);
+    btn.textContent = tracks[key].enabled ? '🔘' : '⭕';
+  });
+  drawTimeline();
+}
+
+function zoomTimeline(f, reset) {
+  if (reset) { zoom = 1; offset = 0; }
+  else zoom = Math.max(0.2, Math.min(15, zoom * f));
+  drawTimeline();
+}
+
+function exportAnim() {
+  const data = {};
+  Object.entries(tracks).forEach(([k, t]) => {
+    if (t.keyframes.length)
+      data[k] = { name: t.name, keyframes: t.keyframes.map(kf => [kf.t, kf.v, kf.interp]) };
+  });
+  if (!Object.keys(data).length) { alert('Нет keyframes'); return; }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'animation.json';
+  a.click();
+  setStatus('✅ Анимация экспортирована');
+}
+
+function importAnim() {
+  document.getElementById('jsonInput').click();
+}
+function onJsonSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      Object.entries(data).forEach(([k, d]) => {
+        if (tracks[k]) {
+          tracks[k].keyframes = d.keyframes.map(([t, v, interp]) => ({ t, v, interp }));
+        }
+      });
+      pushHistory();
+      drawTimeline();
+      setStatus('✅ Анимация импортирована');
+    } catch (err) {
+      alert('Ошибка JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function showAbout() {
+  alert(`🎛️ Retro Audio Studio Pro — Web Edition
+
+Новое:
+• ↶ ↷  — отмена / возврат (Ctrl+Z / Ctrl+Y)
+• Клик по keyframe — удаляет его
+• ПКМ по пустому месту — добавляет keyframe
+
+Эффекты:
+Vinyl Noise, Crackle, Wow, Filters, Saturation, Echo, Reverb`);
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+
+  if (e.ctrlKey && e.code === 'KeyZ') {
+    e.preventDefault();
+    undo();
+  } else if (e.ctrlKey && (e.code === 'KeyY' || (e.shiftKey && e.code === 'KeyZ'))) {
+    e.preventDefault();
+    redo();
+  } else if (e.code === 'Space') {
+    e.preventDefault();
+    if (isPlaying) pause(); else play();
+  } else if (e.code === 'ArrowLeft') seekBy(-1);
+  else if (e.code === 'ArrowRight') seekBy(1);
+  else if (e.code === 'Home') stop();
+  else if (e.ctrlKey && e.code === 'KeyO') { e.preventDefault(); loadAudio(); }
+  else if (e.ctrlKey && e.code === 'KeyS') { e.preventDefault(); saveAudio(); }
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('details'))
+    document.querySelectorAll('details').forEach(d => d.open = false);
+});
+
+initEffects();
+resizeCanvas();
+</script>
+</body>
+</html>
